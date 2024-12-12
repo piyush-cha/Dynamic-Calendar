@@ -55,4 +55,3 @@ The app is deployed using **Vercel**. To deploy your build:
 
 ## **License**
 This project is licensed under the **MIT License**.
-```
