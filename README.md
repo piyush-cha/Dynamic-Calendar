@@ -1,6 +1,3 @@
-Here’s a concise and simple version of the README for your project:
-
-```markdown
 # Dynamic Event Calendar Application
 
 ## **Objective**
@@ -19,7 +16,6 @@ Explore the live application here: [Dynamic Event Calendar](https://dynamic-cale
 - Seamless date handling using `date-fns`.
 - Styled with **Tailwind CSS** for a modern design.
 
----
 
 ## **Setup Instructions**
 1. Clone the repository:
@@ -55,16 +51,8 @@ The app is deployed using **Vercel**. To deploy your build:
    npm run build
    ```
 2. Deploy the `build/` folder to any hosting platform like Vercel or Netlify.
-
----
-
-## **Screenshots**
-*Add relevant screenshots if needed.*
-
 ---
 
 ## **License**
 This project is licensed under the **MIT License**.
 ```
-
-This streamlined version highlights the key details and provides a polished look for your project’s README. Let me know if you'd like to include any additional details!
