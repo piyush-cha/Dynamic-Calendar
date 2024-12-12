@@ -1,7 +1,7 @@
 # Dynamic Event Calendar Application
 
 ## **Objective**
-A **Dynamic Event Calendar Application** built with React.js to showcase advanced logic, clean UI design, and deployment capabilities.
+The **Dynamic Event Calendar Application** is designed to provide users with an interactive and user-friendly platform to manage events effectively. It evaluates advanced React.js logic, clean UI design principles, and deployment capabilities.
 
 ---
 
