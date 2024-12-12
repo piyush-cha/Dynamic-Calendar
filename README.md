@@ -6,7 +6,7 @@ A **Dynamic Event Calendar Application** built with React.js to showcase advance
 ---
 
 ## **Live Demo**
-Explore the live application here: [Dynamic Event Calendar](https://dynamic-calendar-qqcm.vercel.app/)
+Explore the live application here: [Dynamic Event Calendar](https://dynamic-calendar-eight.vercel.app/)
 
 ---
 
