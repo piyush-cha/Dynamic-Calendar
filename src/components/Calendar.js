@@ -4,6 +4,9 @@ import { ChevronLeft, ChevronRight, Share2, Plus, Menu, X } from 'lucide-react';
 import { saveToLocalStorage, loadFromLocalStorage } from './utils/storage';
 import MiniCalendar from './MiniCalendar';
 import './styles/Calendar.css';
+import { saveAs } from 'file-saver';
+import { format as formatDate } from 'date-fns';
+
 
 const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -14,6 +17,7 @@ const Calendar = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [view, setView] = useState('week');
   const [draggedEvent, setDraggedEvent] = useState(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   useEffect(() => {
     const savedEvents = loadFromLocalStorage('calendar-events');
@@ -83,7 +87,7 @@ const Calendar = () => {
       if (event.id === draggedEvent.id) {
         return {
           ...event,
-          date: format(date, 'yyyy-MM-dd'),
+          date: formatDate(date, 'yyyy-MM-dd'),
           startTime: `${hour.toString().padStart(2, '0')}:00`,
           endTime: `${(hour + 1).toString().padStart(2, '0')}:00`
         };
@@ -93,6 +97,31 @@ const Calendar = () => {
 
     setEvents(updatedEvents);
     setDraggedEvent(null);
+  };
+
+  const exportToJSON = () => {
+    const dataStr = JSON.stringify(events, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    saveAs(blob, 'calendar_events.json');
+  };
+
+  const exportToCSV = () => {
+    const headers = ['Title', 'Date', 'Start Time', 'End Time', 'Type'];
+    const csvData = events.map(event => [
+      event.title,
+      event.date,
+      event.startTime,
+      event.endTime,
+      event.type
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => row.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    saveAs(blob, 'calendar_events.csv');
   };
 
   return (
@@ -141,7 +170,7 @@ const Calendar = () => {
             
             <div className="flex items-center gap-4">
               <h2 className="text-lg font-semibold">
-                {format(weekStart, "MMMM d")} - {format(weekEnd, "d, yyyy")}
+                {formatDate(weekStart, "MMMM d")} - {formatDate(weekEnd, "d, yyyy")}
               </h2>
               <div className="flex gap-1">
                 <button
@@ -169,9 +198,37 @@ const Calendar = () => {
                 <option value="week">Week</option>
                 <option value="day">Day</option>
               </select>
-              <button className="p-2 rounded-lg hover:bg-gray-100">
-                <Share2 className="w-5 h-5" />
-              </button>
+             
+              <div className="relative">
+                <button
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                >
+                  <Share2 className="w-5 h-5" />
+                </button>
+                {showExportMenu && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
+                    <button
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                      onClick={() => {
+                        exportToJSON();
+                        setShowExportMenu(false);
+                      }}
+                    >
+                      Export as JSON
+                    </button>
+                    <button
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                      onClick={() => {
+                        exportToCSV();
+                        setShowExportMenu(false);
+                      }}
+                    >
+                      Export as CSV
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
@@ -187,11 +244,11 @@ const Calendar = () => {
                   key={day.toString()}
                   className="p-4 text-center border-r last:border-r-0"
                 >
-                  <div className="text-sm text-gray-500">{format(day, 'EEE')}</div>
+                  <div className="text-sm text-gray-500">{formatDate(day, 'EEE')}</div>
                   <div className={`text-xl font-semibold mt-1 ${
                     isSameDay(day, new Date()) ? 'text-blue-600' : ''
                   }`}>
-                    {format(day, 'd')}
+                    {formatDate(day, 'd')}
                   </div>
                 </div>
               ))}
@@ -306,7 +363,7 @@ const Calendar = () => {
                     <input
                       type="date"
                       name="date"
-                      defaultValue={selectedEvent?.date || format(currentDate, 'yyyy-MM-dd')}
+                      defaultValue={selectedEvent?.date || formatDate(currentDate, 'yyyy-MM-dd')}
                       className="w-full px-3 py-2 border rounded-lg"
                       required
                     />
