@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { format, addWeeks, subWeeks, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, parseISO } from 'date-fns';
+import { format, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, parseISO, addHours } from 'date-fns';
 import { ChevronLeft, ChevronRight, Share2, Plus, Menu, X } from 'lucide-react';
-import { saveToLocalStorage, loadFromLocalStorage } from './utils/storage';
 import MiniCalendar from './MiniCalendar';
+import MonthView from './MonthView';
+import WeekView from './WeekView';
+import DayView from './DayView';
 import './styles/Calendar.css';
 import { saveAs } from 'file-saver';
-import { format as formatDate } from 'date-fns';
-
 
 const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -16,87 +16,64 @@ const Calendar = () => {
   const [savedTasks, setSavedTasks] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [view, setView] = useState('week');
+  const [newEventDate, setNewEventDate] = useState(new Date());
+  const [newEventTime, setNewEventTime] = useState('09:00');
   const [draggedEvent, setDraggedEvent] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
 
   useEffect(() => {
-    const savedEvents = loadFromLocalStorage('calendar-events');
-    if (savedEvents) setEvents(savedEvents);
+    const savedEvents = JSON.parse(localStorage.getItem('calendar-events')) || [];
+    setEvents(savedEvents);
     
-    const tasks = loadFromLocalStorage('saved-tasks');
-    if (tasks) setSavedTasks(tasks);
+    const tasks = JSON.parse(localStorage.getItem('saved-tasks')) || [];
+    setSavedTasks(tasks);
   }, []);
 
   useEffect(() => {
-    saveToLocalStorage('calendar-events', events);
+    localStorage.setItem('calendar-events', JSON.stringify(events));
   }, [events]);
 
-  const weekStart = startOfWeek(currentDate);
-  const weekEnd = endOfWeek(currentDate);
-  const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
-  const timeSlots = Array.from({ length: 13 }, (_, i) => i + 8);
-
-  const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
-  const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
-
-  const getTimeCardColor = (hour) => {
-    const colors = [
-      'from-rose-100 to-rose-200',
-      'from-orange-100 to-orange-200',
-      'from-amber-100 to-amber-200',
-      'from-yellow-100 to-yellow-200',
-      'from-lime-100 to-lime-200',
-      'from-green-100 to-green-200',
-      'from-emerald-100 to-emerald-200',
-      'from-teal-100 to-teal-200',
-      'from-cyan-100 to-cyan-200',
-      'from-sky-100 to-sky-200',
-      'from-blue-100 to-blue-200',
-      'from-indigo-100 to-indigo-200'
-    ];
-    return colors[hour % colors.length];
-  };
-
-  const getEventColor = (type) => {
-    switch (type) {
-      case 'meeting':
-        return 'bg-green-100 border-green-300 text-green-800';
-      case 'personal':
-        return 'bg-orange-100 border-orange-300 text-orange-800';
-      case 'work':
-        return 'bg-blue-100 border-blue-300 text-blue-800';
-      default:
-        return 'bg-gray-100 border-gray-300 text-gray-800';
+  const handlePrevious = () => {
+    switch (view) {
+      case 'month':
+        setCurrentDate(subMonths(currentDate, 1));
+        break;
+      case 'week':
+        setCurrentDate(subWeeks(currentDate, 1));
+        break;
+      case 'day':
+        setCurrentDate(subDays(currentDate, 1));
+        break;
     }
   };
 
-  const handleDragStart = (e, event) => {
-    setDraggedEvent(event);
-    e.dataTransfer.setData('text/plain', event.id);
+  const handleNext = () => {
+    switch (view) {
+      case 'month':
+        setCurrentDate(addMonths(currentDate, 1));
+        break;
+      case 'week':
+        setCurrentDate(addWeeks(currentDate, 1));
+        break;
+      case 'day':
+        setCurrentDate(addDays(currentDate, 1));
+        break;
+    }
   };
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = (e, date, hour) => {
-    e.preventDefault();
-    if (!draggedEvent) return;
-
-    const updatedEvents = events.map(event => {
-      if (event.id === draggedEvent.id) {
-        return {
-          ...event,
-          date: formatDate(date, 'yyyy-MM-dd'),
-          startTime: `${hour.toString().padStart(2, '0')}:00`,
-          endTime: `${(hour + 1).toString().padStart(2, '0')}:00`
-        };
-      }
-      return event;
-    });
-
-    setEvents(updatedEvents);
-    setDraggedEvent(null);
+  const getHeaderText = () => {
+    switch (view) {
+      case 'month':
+        return format(currentDate, 'MMMM yyyy');
+      case 'week':
+        const weekStart = startOfWeek(currentDate);
+        const weekEnd = endOfWeek(currentDate);
+        return `${format(weekStart, "MMMM d")} - ${format(weekEnd, "d, yyyy")}`;
+      case 'day':
+        return format(currentDate, 'MMMM d, yyyy');
+      default:
+        return '';
+    }
   };
 
   const exportToJSON = () => {
@@ -122,6 +99,49 @@ const Calendar = () => {
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     saveAs(blob, 'calendar_events.csv');
+  };
+
+  const handleDragStart = (e, event) => {
+    setDraggedEvent(event);
+    e.dataTransfer.setData('text/plain', event.id);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e, date, hour) => {
+    e.preventDefault();
+    if (!draggedEvent) return;
+
+    const updatedEvents = events.map(event => {
+      if (event.id === draggedEvent.id) {
+        return {
+          ...event,
+          date: format(date, 'yyyy-MM-dd'),
+          startTime: `${hour.toString().padStart(2, '0')}:00`,
+          endTime: `${(hour + 1).toString().padStart(2, '0')}:00`
+        };
+      }
+      return event;
+    });
+
+    setEvents(updatedEvents);
+    setDraggedEvent(null);
+  };
+
+  const handleSelectEvent = (event) => {
+    setSelectedEvent(event);
+    setShowEventModal(true);
+    setNewEventDate(parseISO(event.date));
+    setNewEventTime(event.startTime);
+  };
+
+  const handleAddEvent = (date, hour) => {
+    setSelectedEvent(null);
+    setShowEventModal(true);
+    setNewEventDate(date);
+    setNewEventTime(`${hour.toString().padStart(2, '0')}:00`);
   };
 
   return (
@@ -170,17 +190,17 @@ const Calendar = () => {
             
             <div className="flex items-center gap-4">
               <h2 className="text-lg font-semibold">
-                {formatDate(weekStart, "MMMM d")} - {formatDate(weekEnd, "d, yyyy")}
+                {getHeaderText()}
               </h2>
               <div className="flex gap-1">
                 <button
-                  onClick={handlePrevWeek}
+                  onClick={handlePrevious}
                   className="p-1.5 rounded-lg hover:bg-gray-100"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <button
-                  onClick={handleNextWeek}
+                  onClick={handleNext}
                   className="p-1.5 rounded-lg hover:bg-gray-100"
                 >
                   <ChevronRight className="w-5 h-5" />
@@ -189,16 +209,22 @@ const Calendar = () => {
             </div>
 
             <div className="flex items-center gap-3">
-              <select 
-                value={view}
-                onChange={(e) => setView(e.target.value)}
-                className="bg-white border rounded-lg px-3 py-1.5 text-sm"
-              >
-                <option value="month">Month</option>
-                <option value="week">Week</option>
-                <option value="day">Day</option>
-              </select>
-             
+              <div className="relative">
+                <select 
+                  value={view}
+                  onChange={(e) => setView(e.target.value)}
+                  className="appearance-none bg-white border rounded-lg px-3 py-1.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="month">Month</option>
+                  <option value="week">Week</option>
+                  <option value="day">Day</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                  </svg>
+                </div>
+              </div>
               <div className="relative">
                 <button
                   onClick={() => setShowExportMenu(!showExportMenu)}
@@ -233,96 +259,59 @@ const Calendar = () => {
           </div>
         </header>
 
-        {/* Calendar Grid */}
+        {/* Calendar View */}
         <div className="flex-1 overflow-auto">
-          <div className="min-w-full md:min-w-[768px]">
-            {/* Days Header */}
-            <div className="grid grid-cols-8 bg-white border-b">
-              <div className="p-4 border-r"></div>
-              {weekDays.map((day) => (
-                <div
-                  key={day.toString()}
-                  className="p-4 text-center border-r last:border-r-0"
-                >
-                  <div className="text-sm text-gray-500">{formatDate(day, 'EEE')}</div>
-                  <div className={`text-xl font-semibold mt-1 ${
-                    isSameDay(day, new Date()) ? 'text-blue-600' : ''
-                  }`}>
-                    {formatDate(day, 'd')}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Time Grid */}
-            <div className="grid grid-cols-8">
-              {/* Time Column */}
-              <div className="border-r">
-                {timeSlots.map((hour) => (
-                  <div key={hour} className="h-20 border-b relative">
-                    <div className="absolute inset-0 p-2">
-                      <div className={`h-full w-full rounded-xl bg-gradient-to-br ${getTimeCardColor(hour)} flex items-center justify-center font-medium`}>
-                        {`${hour.toString().padStart(2, '0')}:00`}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Day Columns */}
-              {weekDays.map((day) => (
-                <div key={day.toString()} className="border-r last:border-r-0">
-                  {timeSlots.map((hour) => (
-                    <div
-                      key={`${day}-${hour}`}
-                      className="h-20 border-b relative"
-                      onDragOver={handleDragOver}
-                      onDrop={(e) => handleDrop(e, day, hour)}
-                    >
-                      {events
-                        .filter((event) => 
-                          isSameDay(parseISO(event.date), day) &&
-                          parseInt(event.startTime) === hour
-                        )
-                        .map((event) => (
-                          <div
-                            key={event.id}
-                            className={`absolute inset-x-0 mx-1 p-2 rounded-lg border cursor-pointer transition-colors ${getEventColor(event.type)}`}
-                            style={{
-                              top: '4px',
-                              height: 'calc(100% - 8px)',
-                            }}
-                            onClick={() => {
-                              setSelectedEvent(event);
-                              setShowEventModal(true);
-                            }}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, event)}
-                          >
-                            <div className="font-medium text-sm truncate">{event.title}</div>
-                            <div className="text-xs opacity-75">
-                              {event.startTime} - {event.endTime}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
+          {view === 'month' && (
+            <MonthView
+              currentDate={currentDate}
+              events={events}
+              onSelectDate={(date) => {
+                setCurrentDate(date);
+                setView('day');
+              }}
+            />
+          )}
+          {view === 'week' && (
+            <WeekView
+              currentDate={currentDate}
+              events={events}
+              onSelectEvent={handleSelectEvent}
+              onAddEvent={handleAddEvent}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+            />
+          )}
+          {view === 'day' && (
+            <DayView
+              currentDate={currentDate}
+              events={events}
+              onSelectEvent={handleSelectEvent}
+              onAddEvent={(hour) => handleAddEvent(currentDate, hour)}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+            />
+          )}
         </div>
 
         {/* Floating Action Button */}
-        <button
-          onClick={() => {
-            setSelectedEvent(null);
-            setShowEventModal(true);
-          }}
-          className="fixed right-6 bottom-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
-        >
-          <Plus className="w-6 h-6" />
-        </button>
+        <div className="fixed right-6 bottom-6 group">
+          <button
+            onClick={() => {
+              setSelectedEvent(null);
+              setShowEventModal(true);
+              setNewEventDate(currentDate);
+              setNewEventTime('09:00');
+            }}
+            className="w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+          >
+            <Plus className="w-6 h-6" />
+          </button>
+          <span className="absolute bottom-full right-0 mb-2 w-max px-2 py-1 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+            Add Event
+          </span>
+        </div>
       </div>
 
       {/* Event Modal */}
@@ -342,7 +331,13 @@ const Calendar = () => {
                   e.id === selectedEvent.id ? { ...e, ...eventData } : e
                 ));
               } else {
-                setEvents([...events, { ...eventData, id: Date.now().toString() }]);
+                setEvents([...events, {
+                  ...eventData,
+                  id: Date.now().toString(),
+                  date: format(newEventDate, 'yyyy-MM-dd'),
+                  startTime: newEventTime,
+                  endTime: format(addHours(parseISO(`${format(newEventDate, 'yyyy-MM-dd')}T${newEventTime}`), 1), 'HH:mm')
+                }]);
               }
               
               setShowEventModal(false);
@@ -353,7 +348,7 @@ const Calendar = () => {
                     type="text"
                     name="title"
                     placeholder="Event title"
-                    defaultValue={selectedEvent?.title}
+                    defaultValue={selectedEvent ? selectedEvent.title : ''}
                     className="w-full px-3 py-2 border rounded-lg"
                     required
                   />
@@ -363,7 +358,7 @@ const Calendar = () => {
                     <input
                       type="date"
                       name="date"
-                      defaultValue={selectedEvent?.date || formatDate(currentDate, 'yyyy-MM-dd')}
+                      defaultValue={selectedEvent ? selectedEvent.date : format(newEventDate, 'yyyy-MM-dd')}
                       className="w-full px-3 py-2 border rounded-lg"
                       required
                     />
@@ -371,7 +366,7 @@ const Calendar = () => {
                   <div>
                     <select
                       name="type"
-                      defaultValue={selectedEvent?.type || 'default'}
+                      defaultValue={selectedEvent ? selectedEvent.type : 'default'}
                       className="w-full px-3 py-2 border rounded-lg"
                     >
                       <option value="default">Default</option>
@@ -386,7 +381,7 @@ const Calendar = () => {
                     <input
                       type="time"
                       name="startTime"
-                      defaultValue={selectedEvent?.startTime || '09:00'}
+                      defaultValue={selectedEvent ? selectedEvent.startTime : newEventTime}
                       className="w-full px-3 py-2 border rounded-lg"
                       required
                     />
@@ -395,7 +390,7 @@ const Calendar = () => {
                     <input
                       type="time"
                       name="endTime"
-                      defaultValue={selectedEvent?.endTime || '10:00'}
+                      defaultValue={selectedEvent ? selectedEvent.endTime : format(addHours(parseISO(`${format(newEventDate, 'yyyy-MM-dd')}T${newEventTime}`), 1), 'HH:mm')}
                       className="w-full px-3 py-2 border rounded-lg"
                       required
                     />
